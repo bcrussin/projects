@@ -6,11 +6,14 @@ float[][] data;
 float[] maxPoint;
 float[] minPoint;
 float[] maxLength;
+float[] camX = {0, 0};
+float[] camY = {0, 0};
 float[] oldCamX = {0, 0};
 float[] oldCamY = {0, 0};
 float[] clickPos = {0, 0};
 float gridWidth;
 float gridHeight;
+float stroke;
 double xInterval;
 double yInterval;
 int numLabels;
@@ -19,20 +22,22 @@ int numPoints;
 int graphID;
 boolean graphMode = true;
 boolean dragging = false;
+boolean zoomBoth = true;
+boolean spacePressed = false;
 boolean ctrlPressed = false;
 color bgCol = #f2f2f2;
 
 float[] xBound = {100, 300};
 float[] yBound = {25, 25};
-float[] camX = {0, 10};
-float[] camY = {-1000, 2000};
+float[] startCamX = {0, 5.4};
+float[] startCamY = {-1900, 2100};
 float[] zoomScale = {0.5, 10};
 float zoomSpd = 0.1;
 
 int dataTextSize = 25;
-color dataLabelBG = #aaaaaa;
+color dataLabelBG = #e6e6e6;
 float dataScrollSpd = 15;
-float dataInterval = 1;
+float dataInterval = 0.2;
 float dataPadX = 4.5;
 float dataPadY = 2.5;
 float dataCamX = 0;
@@ -43,7 +48,9 @@ float dataTotalWidth = 0;
 float dataTotalHeight;
 boolean shiftPressed = false;
 
-float hoverSize = 1.75;
+float minStroke = 3;
+float maxStroke = 12;
+float hoverSize = 1.5;
 int lineHover = -1;
 color hoverCol = #4d4d4d;
 color hoverPointCol = #cccccc;
@@ -132,43 +139,64 @@ void mouseReleased() {
 }
 
 void mouseWheel(MouseEvent event) {
-  if(graphMode && mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
-    float e = event.getCount();
-    float mx = map(mouseX, xBound[0], width - xBound[1], 0, 1);
-    float my = map(mouseY, height - yBound[0], yBound[1], 0, 1);
-    float cw = camX[1] - camX[0];
-    float ch = camY[1] - camY[0];
-    for(int i = 0; i < 2; i++) {
-      //camX[i] *= (1 + (0.05 * e) * abs(e));
-      //camY[i] *= (1 + (0.05 * e) * abs(e));
-    }
-    camX[0] += (zoomSpd * cw) * mx * (e * -1);
-    camX[1] += (zoomSpd * cw) * (1-mx) * e;
-    camY[0] += (zoomSpd * ch) * my * (e * -1);
-    camY[1] += (zoomSpd * ch) * (1-my) * e;
-  } else if(!graphMode && mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
-    float e = event.getCount();
-    if(shiftPressed) {
-      dataCamX += e * dataScrollSpd * -1;
+  if(mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
+    if(graphMode) {
+      zoomBoth = ctrlPressed == shiftPressed;
+      float e = event.getCount();
+      float mx = map(mouseX, xBound[0], width - xBound[1], 0, 1);
+      float my = map(mouseY, height - yBound[0], yBound[1], 0, 1);
+      float cw = camX[1] - camX[0];
+      float ch = camY[1] - camY[0];
+      for(int i = 0; i < 2; i++) {
+        //camX[i] *= (1 + (0.05 * e) * abs(e));
+        //camY[i] *= (1 + (0.05 * e) * abs(e));
+      }
+      if(zoomBoth || shiftPressed) camX[0] += (zoomSpd * cw) * mx * (e * -1);
+      if(zoomBoth || shiftPressed) camX[1] += (zoomSpd * cw) * (1-mx) * e;
+      if(zoomBoth || ctrlPressed) camY[0] += (zoomSpd * ch) * my * (e * -1);
+      if(zoomBoth || ctrlPressed) camY[1] += (zoomSpd * ch) * (1-my) * e;
     } else {
-      dataCamY += e * dataScrollSpd;
+      float e = event.getCount();
+      if(shiftPressed) {
+        dataCamX += e * dataScrollSpd * -1;
+      } else {
+        dataCamY += e * dataScrollSpd;
+      }
     }
   }
 }
 
 void keyPressed() {
-  if(keyCode == CONTROL) {
-    ctrlPressed = true;
-  } else if(keyCode == SHIFT) {
-    shiftPressed = true;
+  if(key == ' ') {
+    spacePressed = true;
+  }
+  switch(keyCode) {
+    case CONTROL:
+      ctrlPressed = true;
+      break;
+    case SHIFT:
+      shiftPressed = true;
+      break;
+    case ENTER:
+      camX[0] = startCamX[0];
+      camX[1] = startCamX[1];
+      camY[0] = startCamY[0];
+      camY[1] = startCamY[1];
+      break;
   }
 }
 
 void keyReleased() {
-  if(keyCode == CONTROL) {
-    ctrlPressed = false;
-  } else if(keyCode == SHIFT) {
-    shiftPressed = false;
+  if(key == ' ') {
+    spacePressed = false;
+  }
+  switch(keyCode) {
+    case CONTROL:
+      ctrlPressed = false;
+      break;
+    case SHIFT:
+      shiftPressed = false;
+      break;
   }
 }
 
@@ -214,7 +242,12 @@ void setup() {
     dataTotalWidth += maxLength[i];
   }
   dataTotalWidth += (dataPadX) - gridWidth + (dataTextSize);
-  dataTotalHeight = (dataPadY * numPoints) - gridHeight + (dataTextSize / 2);
+  dataTotalHeight = (dataPadY * numPoints) - gridHeight;
+  
+  camX[0] = startCamX[0];
+  camX[1] = startCamX[1];
+  camY[0] = startCamY[0];
+  camY[1] = startCamY[1];
 }
 
 void draw() {
@@ -238,13 +271,15 @@ void draw() {
   
   if(graphMode) {
       //draw graph lines
-    strokeWeight(map(constrain((camX[1] - camX[0]) * 0.5, 1, 10), -8, 20, 15, -5));
+    stroke = constrain(maxStroke - ((camX[1] - camX[0]) / (numPoints * dataInterval) * (minStroke + (maxStroke / minStroke))), minStroke, maxStroke);
+    strokeWeight(stroke);
+    //strokeWeight(map(constrain((camX[1] - camX[0]) * 0.5, 1, numPoints * dataInterval), 2, (numPoints * dataInterval), (numPoints * dataInterval), 2));
     for(int i = 0; i < numLines; i++) {
       for(int j = 1; j < numPoints; j++) {
         if(lineToggle[i]) {
           if(lineHover != i) {
             stroke(colors[i]);
-            graphLine(i, j-1, data[i][j-1], j, data[i][j]);
+            graphLine(i, (j-1) * dataInterval, data[i][j-1], j * dataInterval, data[i][j]);
           }
         } else {
           continue;
@@ -261,13 +296,13 @@ void draw() {
       hBlue += (255 - hBlue) * hoverMod;
       stroke(hRed, hGreen, hBlue);*/
       stroke(hoverCol);
-      strokeWeight(map(constrain((camX[1] - camX[0]) * 0.5, 1, 10), -8, 20, 15, -5) * hoverSize);
-      float pointSize = map(constrain((camX[1] - camX[0]) * 0.5, 1, 10), -8, 20, 15, -5) * hoverSize;
+      strokeWeight(stroke * hoverSize);
+      float pointSize = stroke * hoverSize;
       for(int j = 1; j < numPoints; j++) {
-        graphLine(lineHover, j-1, data[lineHover][j-1], j, data[lineHover][j]);
+        graphLine(lineHover, (j-1) * dataInterval, data[lineHover][j-1], j * dataInterval, data[lineHover][j]);
       }
       for(int j = 1; j < numPoints; j++) {
-        graphPoint(j, data[lineHover][j], hoverPointCol, pointSize);
+        graphPoint(j * dataInterval, data[lineHover][j], hoverPointCol, pointSize);
       }
     }
   } else {
@@ -296,7 +331,7 @@ void draw() {
     }
     
       
-    fill(bgCol);
+    fill(dataLabelBG);
     noStroke();
     rect(xBound[0], yBound[1], dataPadX, gridHeight);
     rect(xBound[0], yBound[1], gridWidth, dataPadY);
@@ -326,7 +361,7 @@ void draw() {
       if(yBound[1] + ypos > height - yBound[0]) break;
     }
     
-    fill(bgCol);
+    fill(dataLabelBG);
     noStroke();
     rect(xBound[0], yBound[1], dataPadX, dataPadY);
     stroke(#000000);
@@ -439,7 +474,7 @@ void draw() {
     
     
       //show/hide coordinates
-    if(ctrlPressed && mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
+    if(spacePressed && mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
       float hoverX = (float) round(map(mouseX, xBound[0], width - xBound[1], camX[0], camX[1]) * 10) / 10;
       float hoverY = (float) round(map(mouseY, height - yBound[0], yBound[1], camY[0], camY[1]) * 10) / 10;
       String text = str(hoverX) + ", " + str(hoverY);
