@@ -418,6 +418,14 @@ void draw() {
   rect(0, 0, width, yBound[1]);
   rect(0, height - yBound[0], width, height);
   
+  if(!graphMode) {
+      //scroll lines
+    fill(#a6a6a6);
+    noStroke();
+    if(dataTotalHeight + dataPadY > gridHeight) rect(width - xBound[1] + 5, map(dataCamY, 0, dataTotalHeight, yBound[1] + dataPadY + 5, height - yBound[0] - 55), 10, 50, 5);
+    if(dataTotalWidth > 0) rect(map(dataCamX, 0, dataTotalWidth, xBound[0] + dataPadX + 5, width - xBound[1] - 55), height - yBound[0] + 5, 50, 10, 5);
+  }
+  
   
     //draw ui
   lineHover = -1;
