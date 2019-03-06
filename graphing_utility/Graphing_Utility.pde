@@ -6,6 +6,8 @@ float[][] data;
 float[] maxPoint;
 float[] minPoint;
 float[] maxLength;
+float trueMax;
+float trueMin;
 float[] camX = {0, 0};
 float[] camY = {0, 0};
 float[] oldCamX = {0, 0};
@@ -14,6 +16,9 @@ float[] clickPos = {0, 0};
 float gridWidth;
 float gridHeight;
 float stroke;
+float selectedRange;
+float maxToggled;
+float minToggled;
 double xInterval;
 double yInterval;
 int numLabels;
@@ -36,7 +41,7 @@ float zoomSpd = 0.1;
 
 int dataTextSize = 25;
 color dataLabelBG = #e6e6e6;
-float dataScrollSpd = 15;
+float dataScrollSpd = 20;
 float dataInterval = 0.2;
 float dataPadX = 4.5;
 float dataPadY = 2.5;
@@ -82,6 +87,22 @@ void graphPoint(float x1, float y1, color c, float r) {
   ellipse(x1, y1, r, r);
 }
 
+float[] getSelectedRange() {
+  float max = Float.NaN;
+  float min = Float.NaN;
+  
+  for(int i = 0; i < numLines; i++) {
+    if(lineToggle[i]) {
+      if(maxPoint[i] > max || max != max) max = maxPoint[i];
+      if(minPoint[i] < min || min != min) min = minPoint[i];
+    }
+  }
+  
+  float result[] = {max, min};
+  
+  return result;
+}
+
 boolean allTrue(boolean[] arr) {
   for(int i = 0; i < arr.length; i++) {
     if(arr[i] != true) return false;
@@ -125,11 +146,27 @@ void mousePressed() {
       for(int i = 1; i < numLabels; i++) {
         if(mouseY > (gridHeight / numLabels) * i + (yBound[1] * 2)
           && mouseY < (gridHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
-          lineToggle[i-1] = !lineToggle[i-1];
+            
+          if(mouseButton == LEFT) {
+              //show/hide single line
+            if(ctrlPressed) lineToggle[i-1] = true;
+            else lineToggle[i-1] = !lineToggle[i-1];
+          } else if(mouseButton == RIGHT) {
+              //show only selected line
+            Arrays.fill(lineToggle, false);
+            lineToggle[i-1] = true;
+          }
+          
+          if(ctrlPressed) {
+              //zoom to fit selected points
+            float yRange = getSelectedRange()[0] - getSelectedRange()[1];
+            camX[0] = 0;
+            camX[1] = (numPoints - 1) * dataInterval;
+            camY[0] = getSelectedRange()[1] - (yRange * 0.05);
+            camY[1] = getSelectedRange()[0] + (yRange * 0.05);
+          }
         }
       }
-    } else if(mouseX > width - xBound[1] + 60 + boxSize && mouseX < width - xBound[1] + 60 + (boxSize * 2)) {
-      
     }
   }
 }
@@ -227,10 +264,12 @@ void setup() {
       data[j][i] = float(temp[j]);
       if(float(temp[j]) > maxPoint[j]) {
         maxPoint[j] = float(temp[j]);
+        if(maxPoint[j] > trueMax) trueMax = maxPoint[j];
         maxLength[j] = str(maxPoint[j]).length() * dataTextSize;
       }
       
       if(float(temp[j]) < minPoint[j] || minPoint[j] != minPoint[j]) minPoint[j] = float(temp[j]);
+      if(float(temp[j]) < trueMin || trueMin != trueMin) trueMin = float(temp[j]);
     }
   }
   lineToggle = new boolean[numLines];
