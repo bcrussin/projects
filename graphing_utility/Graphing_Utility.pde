@@ -22,8 +22,8 @@ float[] savedCamX = {0, 0};
 float[] savedCamY = {0, 0};
 float[] zoomTargetX = {0, 0};
 float[] zoomTargetY = {0, 0};
-float gridWidth;
-float gridHeight;
+float graphWidth;
+float graphHeight;
 float stroke;
 float selectedRange;
 float maxToggled;
@@ -35,6 +35,7 @@ int numLabels;
 int numLines;
 int numPoints;
 int graphID;
+boolean autoZooming = false;
 boolean zooming = false;
 boolean zoomedToFit = false;
 boolean graphMode = true;
@@ -42,14 +43,16 @@ boolean dragging = false;
 boolean zoomBoth = true;
 boolean spacePressed = false;
 boolean ctrlPressed = false;
+boolean altPressed = false;
 color bgCol = #f2f2f2;
 
 float[] xBound = {100, 300};
 float[] yBound = {25, 25};
 float[] startCamX = {-10, 15.4};
-float[] startCamY = {-19000, 21000};
+float[] startCamY = {-19000, 20000};
 float[] zoomScale = {0.5, 10};
 float zoomSpd = 0.4;
+float clickZoomSpd = 5;
 
 int dataTextSize = 25;
 color dataLabelBG = #e6e6e6;
@@ -73,7 +76,7 @@ int lineHover = -1;
 color hoverCol = #4d4d4d;
 color hoverPointCol = #cccccc;
 
-String[] labels = {"Temp", "Pressure", "Altitude", "Accel X", "Accel Y", "Accel Z", "Mag X", "Mag Y", "Mag Z"};
+String[] labels = {};
 float boxSize = 20;
 
 color[] colors = {#ff0000, #ff8000, #ffcc00, #ace600, #00e64a, #00e6b8, #00ace6, #0017e6, #d500e6};
@@ -115,7 +118,7 @@ void zoomToSelected(float spd) {
 void zoomToPos(float[] cx, float[] cy, float spd) {
   //println("[" + cx[0] + ", " + cx[1] + "], [" + cy[0] + ", " + cy[1] + "]");
   if(allTrueFalse(lineToggle, false)) return;
-  zooming = true;
+  autoZooming = true;
   autoZoomSpd = spd;
   zoomTargetX[0] = cx[0];
   zoomTargetX[1] = cx[1];
@@ -123,6 +126,11 @@ void zoomToPos(float[] cx, float[] cy, float spd) {
   zoomTargetY[1] = cy[1];
   
   return;
+}
+
+float[] getGraphPos(float x, float y) {
+  float[] result = {map(x, xBound[0], width - xBound[1], 0, graphWidth), map(y, height - yBound[0], yBound[1], 0, graphHeight)};
+  return result;
 }
 
 float[] getSelectedRange() {
@@ -154,20 +162,33 @@ float roundTo(float num, double interval) {
 
 void mousePressed() {
   if(mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
-    if(!dragging) {
-        //click (and drag) graph
-      clickPos[0] = mouseX;
-      clickPos[1] = mouseY;
-      if(graphMode) {
+    if(mouseButton == CENTER && graphMode) {
+      if(!zooming) {
+          //click (and zoom) graph
+        clickPos[0] = mouseX;
+        clickPos[1] = mouseY;
         for(int i = 0; i < 2; i++) {
           oldCamX[i] = camX[i];
           oldCamY[i] = camY[i];
         }
-      } else {
-        oldDataCamX = dataCamX;
-        oldDataCamY = dataCamY;
+        zooming = true;
       }
-      dragging = true;
+    } else if(mouseButton == LEFT) {
+      if(!dragging) {
+          //click (and drag) graph
+        clickPos[0] = mouseX;
+        clickPos[1] = mouseY;
+        if(graphMode) {
+          for(int i = 0; i < 2; i++) {
+            oldCamX[i] = camX[i];
+            oldCamY[i] = camY[i];
+          }
+        } else {
+          oldDataCamX = dataCamX;
+          oldDataCamY = dataCamY;
+        }
+        dragging = true;
+      }
     }
   } else if(mouseX > width - xBound[1] + 20 && mouseX < width - xBound[1] + 120
     && mouseY > yBound[1] * 1.25 && mouseY < yBound[1] * 1.25 + 45) {
@@ -182,8 +203,8 @@ void mousePressed() {
       //show/hide a single line
     if(mouseX > width - xBound[1] + 50 && mouseX < width - xBound[1] + 50 + boxSize) {
       for(int i = 1; i < numLabels; i++) {
-        if(mouseY > (gridHeight / numLabels) * i + (yBound[1] * 2)
-          && mouseY < (gridHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
+        if(mouseY > (graphHeight / numLabels) * i + (yBound[1] * 2)
+          && mouseY < (graphHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
             
           if(mouseButton == LEFT) {
               //show/hide single line
@@ -206,22 +227,19 @@ void mousePressed() {
 
 void mouseReleased() {
   dragging = false;
+  zooming = false;
 }
 
 void mouseWheel(MouseEvent event) {
-  zooming = false;
+  autoZooming = false;
   if(mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
     if(graphMode) {
       zoomBoth = ctrlPressed == shiftPressed;
       float e = event.getCount();
-      float mx = map(mouseX, xBound[0], width - xBound[1], 0, 1);
-      float my = map(mouseY, height - yBound[0], yBound[1], 0, 1);
+      float mx = altPressed ? 0.5 : map(mouseX, xBound[0], width - xBound[1], 0, 1);
+      float my = altPressed ? 0.5 : map(mouseY, height - yBound[0], yBound[1], 0, 1);
       float cw = camX[1] - camX[0];
       float ch = camY[1] - camY[0];
-      for(int i = 0; i < 2; i++) {
-        //camX[i] *= (1 + (0.05 * e) * abs(e));
-        //camY[i] *= (1 + (0.05 * e) * abs(e));
-      }
       float[] zoomx = {camX[0], camX[1]};
       float[] zoomy = {camY[0], camY[1]};
       if(zoomBoth || shiftPressed) zoomx[0] += (zoomSpd * cw) * mx * (e * -1);
@@ -251,23 +269,10 @@ void keyPressed() {
     case SHIFT:
       shiftPressed = true;
       break;
+    case ALT:
+      altPressed = true;
+      break;
     case ENTER:
-      /*if(graphMode) {
-        if(zoomedToFit) {
-          camX[0] = savedCamX[0];
-          camX[1] = savedCamX[1];
-          camY[0] = savedCamY[0];
-          camY[1] = savedCamY[1];
-          zoomedToFit = false;
-        } else {
-          savedCamX[0] = camX[0];
-          savedCamX[1] = camX[1];
-          savedCamY[0] = camY[0];
-          savedCamY[1] = camY[1];
-          zoomToSelected();
-          zoomedToFit = true;
-        }
-      }*/
       zoomToSelected(10);
       break;
   }
@@ -284,6 +289,9 @@ void keyReleased() {
     case SHIFT:
       shiftPressed = false;
       break;
+    case ALT:
+      altPressed = false;
+      break;
   }
 }
 
@@ -292,45 +300,43 @@ void settings() {
 }
 
 void setup() {
-  gridWidth = (width - xBound[1]) - xBound[0];
-  gridHeight = (height - yBound[0]) - yBound[1];
-  File f = dataFile(dataPath + ".csv.csv");
-  String filePath = f.getPath();
+  graphWidth = (width - xBound[1]) - xBound[0];
+  graphHeight = (height - yBound[0]) - yBound[1];
+  File f = dataFile(dataPath + ".csv");
   boolean exist = f.isFile();
   if(exist) {
     println("Loading .csv file");
-    dataPath += ".csv.csv";
+    dataPath += ".csv";
     csvData = loadTable(dataPath, "header");
     numLines = csvData.getColumnCount();
     numPoints = csvData.getRowCount();
+    labels = new String[numLines];
     data = new float[numLines][numPoints];
     maxPoint = new float[numLines];
     minPoint = new float[numLines];
     maxLength = new float[numLines];
     Arrays.fill(maxPoint, Float.NaN);
     Arrays.fill(minPoint, Float.NaN);
-    for(int i = 0; i < numPoints; i++) {
-      for(int j = 0; j < numLines; j++) {
-        data[j][i] = csvData.getFloat(i, j);
-        if(data[j][i] > maxPoint[j] || maxPoint[j] != maxPoint[j]) {
-          maxPoint[j] = data[j][i];
-          maxLength[j] = str(maxPoint[j]).length() * dataTextSize;
+    for(int i = 0; i < numLines; i++) {
+      labels[i] = csvData.getColumnTitle(i);
+      for(int j = 0; j < numPoints; j++) {
+        data[i][j] = csvData.getFloat(j, i);
+        if(data[i][j] > maxPoint[i] || maxPoint[i] != maxPoint[i]) {
+          maxPoint[i] = data[i][j];
+          maxLength[i] = str(maxPoint[i]).length() * dataTextSize;
         }
         
-        if(data[j][i] < minPoint[j] || minPoint[j] != minPoint[j]) minPoint[j] = data[j][i];
+        if(data[i][j] < minPoint[i] || minPoint[i] != minPoint[i]) minPoint[i] = data[i][j];
       }
     }
   } else {
     println("Loading .txt file");
-    dataPath += ".txt.txt";
+    dataPath += ".txt";
     fileData = loadStrings(dataPath);
     String[] temp = loadStrings(dataPath);
-    /*fileData = new String[(temp.length / 2) + 1];
-    for(int i = 0; i < temp.length; i++) {
-      if(i % 2 == 0) fileData[i/2] = temp[i];
-    }*/
+    labels = temp[0].split(",");
     numLines = parseInt(split(fileData[0], ",").length);
-    numPoints = parseInt(fileData.length);
+    numPoints = parseInt(fileData.length) - 1;
     data = new float[numLines][numPoints];
     maxPoint = new float[numLines];
     minPoint = new float[numLines];
@@ -338,7 +344,7 @@ void setup() {
     Arrays.fill(maxPoint, Float.NaN);
     Arrays.fill(minPoint, Float.NaN);
     for(int i = 0; i < numPoints; i++) {
-      temp = split(fileData[i], ",");
+      temp = split(fileData[i + 1], ",");
       for(int j = 0; j < temp.length; j++) {
         data[j][i] = float(temp[j]);
         if(float(temp[j]) > maxPoint[j] || maxPoint[j] != maxPoint[j]) {
@@ -367,20 +373,20 @@ void setup() {
   for(int i = 0; i < maxLength.length; i++) {
     dataTotalWidth += maxLength[i];
   }
-  dataTotalWidth += (dataPadX) - gridWidth + (dataTextSize);
-  dataTotalHeight = (dataPadY * numPoints) - gridHeight;
+  dataTotalWidth += (dataPadX) - graphWidth + (dataTextSize);
+  dataTotalHeight = (dataPadY * numPoints) - graphHeight;
   
   camX[0] = startCamX[0];
   camX[1] = startCamX[1];
   camY[0] = startCamY[0];
   camY[1] = startCamY[1];
   
-  zoomToSelected(20);
+  zoomToSelected(15);
 }
 
 void draw() {
     //update mouse
-  if(zooming) {
+  if(autoZooming) {
     //println((zoomTargetX[1] - camX[1]) / zoomSpd);
     camX[0] += (zoomTargetX[0] - camX[0]) / autoZoomSpd;
     camX[1] += (zoomTargetX[1] - camX[1]) / autoZoomSpd;
@@ -390,21 +396,35 @@ void draw() {
     if(abs(camX[0] - zoomTargetX[0]) < zoomDist && abs(camX[1] - zoomTargetX[1]) < zoomDist && abs(camY[0] - zoomTargetY[0]) < zoomDist && abs(camY[1] - zoomTargetY[1]) < zoomDist) {
       //println("ZOOM COMPLETE");
       //println(camY[0] - zoomTargetY[0]);
-      zooming = false;
+      autoZooming = false;
     }
   }
   
-  if(mousePressed && dragging) {
-    if(graphMode) {
-      zoomedToFit = false;
-      zooming = false;
-      for(int i = 0; i < 2; i++) {
-        camX[i] = oldCamX[i] - ((mouseX - clickPos[0]) / (gridWidth / (camX[1] - camX[0])));
-        camY[i] = oldCamY[i] - ((clickPos[1] - mouseY) / (gridHeight / (camY[1] - camY[0])));
+  if(mousePressed) {
+    if(dragging) {
+      if(graphMode) {
+        zoomedToFit = false;
+        autoZooming = false;
+        for(int i = 0; i < 2; i++) {
+          camX[i] = oldCamX[i] - ((mouseX - clickPos[0]) / (graphWidth / (camX[1] - camX[0])));
+          camY[i] = oldCamY[i] - ((clickPos[1] - mouseY) / (graphHeight / (camY[1] - camY[0])));
+        }
+      } else {
+        dataCamX = oldDataCamX - ((mouseX - clickPos[0]));
+        dataCamY = oldDataCamY - ((clickPos[1] - mouseY)) * -1;
       }
-    } else {
-      dataCamX = oldDataCamX - ((mouseX - clickPos[0]));
-      dataCamY = oldDataCamY - ((clickPos[1] - mouseY)) * -1;
+    } else if(zooming && graphMode) {
+      zoomedToFit = false;
+      autoZooming = false;
+      float[] graphPos = getGraphPos(mouseX, mouseY);
+      float[] oldGraphPos = getGraphPos(clickPos[0], clickPos[1]);
+      float[] zoomX = {camX[0], camX[1]};
+      float[] zoomY = {camY[0], camY[1]};
+      zoomX[0] += map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
+      zoomY[0] += map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+      zoomX[1] -= map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
+      zoomY[1] -= map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+      clickPos[1] = mouseY;
     }
   }
   
@@ -477,8 +497,8 @@ void draw() {
       
     fill(dataLabelBG);
     noStroke();
-    rect(xBound[0], yBound[1], dataPadX, gridHeight);
-    rect(xBound[0], yBound[1], gridWidth, dataPadY);
+    rect(xBound[0], yBound[1], dataPadX, graphHeight);
+    rect(xBound[0], yBound[1], graphWidth, dataPadY);
     stroke(#000000);
     xpos = (dataPadX) - dataCamX;
     
@@ -527,7 +547,7 @@ void draw() {
       //scroll lines
     fill(#a6a6a6);
     noStroke();
-    if(dataTotalHeight + dataPadY > gridHeight) rect(width - xBound[1] + 5, map(dataCamY, 0, dataTotalHeight, yBound[1] + dataPadY + 5, height - yBound[0] - 55), 10, 50, 5);
+    if(dataTotalHeight + dataPadY > graphHeight) rect(width - xBound[1] + 5, map(dataCamY, 0, dataTotalHeight, yBound[1] + dataPadY + 5, height - yBound[0] - 55), 10, 50, 5);
     if(dataTotalWidth > 0) rect(map(dataCamX, 0, dataTotalWidth, xBound[0] + dataPadX + 5, width - xBound[1] - 55), height - yBound[0] + 5, 50, 10, 5);
   }
   
@@ -543,12 +563,12 @@ void draw() {
     } else {
       noFill();
     }
-    rect(width - xBound[1] + 50, (gridHeight / numLabels) * i + (yBound[1] * 2), boxSize, boxSize, 5);
+    rect(width - xBound[1] + 50, (graphHeight / numLabels) * i + (yBound[1] * 2), boxSize, boxSize, 5);
     fill(colors[i-1]);
     textSize(25);
     textAlign(LEFT, CENTER);
-    text(labels[i-1], width - xBound[1] + 60 + boxSize, (gridHeight / numLabels) * i + (yBound[1] * 2) + 7);
-    if(mouseX > width - xBound[1] + 50 && mouseX < width - xBound[1] + 50 + boxSize && mouseY > (gridHeight / numLabels) * i + (yBound[1] * 2) && mouseY < (gridHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
+    text(labels[i-1], width - xBound[1] + 60 + boxSize, (graphHeight / numLabels) * i + (yBound[1] * 2) + 7);
+    if(mouseX > width - xBound[1] + 50 && mouseX < width - xBound[1] + 50 + boxSize && mouseY > (graphHeight / numLabels) * i + (yBound[1] * 2) && mouseY < (graphHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
       lineHover = i-1;
     }
   }
