@@ -418,12 +418,10 @@ void draw() {
       autoZooming = false;
       float[] graphPos = getGraphPos(mouseX, mouseY);
       float[] oldGraphPos = getGraphPos(clickPos[0], clickPos[1]);
-      float[] zoomX = {camX[0], camX[1]};
-      float[] zoomY = {camY[0], camY[1]};
-      zoomX[0] += map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
-      zoomY[0] += map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
-      zoomX[1] -= map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
-      zoomY[1] -= map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+      camX[0] += map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
+      camY[0] += map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+      camX[1] -= map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
+      camY[1] -= map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
       clickPos[1] = mouseY;
     }
   }
