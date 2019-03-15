@@ -128,6 +128,27 @@ void zoomToPos(float[] cx, float[] cy, float spd) {
   return;
 }
 
+float getPowerOfTen(float input) {
+  int counter = 0;
+  if(input <= 0) {
+    return Float.NaN;
+  } else if(input < 10 && input >= 1) {
+    return 0;
+  } else if(input >= 10) {
+    while(input >= 10) {
+      input /= 10;
+      counter++;
+    }
+    return counter;
+  } else {
+    while(input < 1) {
+      input *= 10;
+      counter--;
+    }
+    return counter;
+  }
+}
+
 float[] getGraphPos(float x, float y) {
   float[] result = {map(x, xBound[0], width - xBound[1], 0, graphWidth), map(y, height - yBound[0], yBound[1], 0, graphHeight)};
   return result;
@@ -156,8 +177,12 @@ boolean allTrueFalse(boolean[] arr, boolean check) {
   return true;
 }
 
-float roundTo(float num, double interval) {
+float roundUpTo(float num, double interval) {
   return (float) (Math.ceil(num / interval) * interval);
+}
+
+float roundDownTo(float num, double interval) {
+  return (float) (Math.floor(num / interval) * interval);
 }
 
 void mousePressed() {
@@ -381,6 +406,8 @@ void setup() {
   camY[0] = startCamY[0];
   camY[1] = startCamY[1];
   
+  lineToggle[1] = false;
+  
   zoomToSelected(15);
 }
 
@@ -468,7 +495,7 @@ void draw() {
       }
     }
   } else {
-      //show data
+      //show data view
     if(dataCamX < 0) dataCamX = 0;
     if(dataCamY < 0) dataCamY = 0;
     if(dataCamX > dataTotalWidth) dataCamX = dataTotalWidth;
@@ -483,7 +510,7 @@ void draw() {
     textAlign(LEFT, TOP);
     fill(#000000);
     
-      //data
+      //render data
     for(int i = 0; i < numLines; i++) {
       for(int j = 0; j < numPoints; j++) {
         float ypos = (dataPadY) + ((dataTextSize + 5) * j * 2) - dataCamY;
@@ -500,7 +527,7 @@ void draw() {
     stroke(#000000);
     xpos = (dataPadX) - dataCamX;
     
-      //x-axis labels
+      //data labels
     for(int i = 0; i < numLines; i++) {
       //println(maxPoint[i] + ", " + maxLength[i]);
       //float xpos = (maxLength[i] * (i * 5) + 4);
@@ -512,10 +539,11 @@ void draw() {
       xpos += (maxLength[i]);
     }
     
+    
     textAlign(LEFT, TOP);
     fill(#000000);
     
-      //y-axis labels
+      //data interval labels
     for(int i = 0; i < numPoints; i++) {
       float ypos = (dataPadY) + ((dataTextSize + 5) * i * 2) - dataCamY;
       if(ypos > dataPadY) line(0, yBound[1] + ypos, width - xBound[1], yBound[1] + ypos);
@@ -530,7 +558,7 @@ void draw() {
     strokeWeight(5);
     line(xBound[0] + (dataPadX), yBound[1], xBound[0] + (dataPadX), height - yBound[0]);
     line(0, yBound[1] + (dataPadY), width - xBound[1], yBound[1] + (dataPadY));
-  }
+  }  //end data view
   
   
     //hide overflow
@@ -591,46 +619,80 @@ void draw() {
     line(xBound[0], height - yBound[0], width - xBound[1], height - yBound[0]);
     
     
-      //axis labels
+      //axis intervals
     fill(#000000);
     xInterval = (camX[1] - camX[0]) / 10;
     yInterval = (camY[1] - camY[0]) / 10;
     boolean xRounding, yRounding;
-    if(xInterval >= 10) {
+    float tempx = camX[1] - camX[0];
+    float powx = getPowerOfTen(tempx);
+    
+    xInterval = (int) (floor(tempx / (pow(10, powx) * 2)) + 1) * (pow(10, powx - 1) * 2);
+    println(pow(10, powx - 1) * 2);
+    /*if(tempx >= 10 || tempx < 1) {
+      if(tempx < pow(10, powx) * 2) {
+        xInterval = (int) pow(10, powx - 1) * 2;
+      } else if(tempx < pow(10, powx) * 4) {
+        xInterval = (int) pow(10, powx - 1) * 4;
+      } else if(tempx < pow(10, powx) * 8) {
+        xInterval = (int) pow(10, powx - 1) * 8;
+      } else {
+        xInterval = (int) pow(10, powx);
+      }
+    }*/
+    
+    println(tempx + ", " + xInterval);
+    //println(tempx + ", " + (pow(10, powx)) + ", " + (tempx - pow(10, powx)));
+    
+    /*if(xInterval >= 10) {
       xInterval = (int) roundTo((float) xInterval, (double) 5);
       xRounding = true;
     } else if(xInterval >= 0.75) {
       xInterval = roundTo((camX[1] - camX[0]) / 10, (double) 2);
       xRounding = true;
     } else {
-      xInterval = roundTo((camX[1] - camX[0]) / 10, (double) 0.1);
+      double xi = xInterval;
+      int counter = 0;
+      while(xi < 1) {
+        xi *= 10;
+        counter++;
+      }
+      xInterval = roundTo((camX[1] - camX[0]) / 10, (double) pow(10, -counter));
       xRounding = false;
-    }  
+    }*/
     
     if(yInterval >= 10) {
-      yInterval = (int) roundTo((float) yInterval, (double) 5);
+      yInterval = (int) roundUpTo((float) yInterval, (double) 5);
       yRounding = true;
     } else if(yInterval >= 0.75) {
-      yInterval = roundTo((camY[1] - camY[0]) / 10, (double) 2);
+      yInterval = roundUpTo((camY[1] - camY[0]) / 10, (double) 2);
       yRounding = true;
     } else {
-      yInterval = roundTo((camY[1] - camY[0]) / 10, (double) 0.1);
+      double yi = yInterval;
+      int counter = 0;
+      while(yi < 1) {
+        yi *= 10;
+        counter++;
+      }
+      yInterval = roundUpTo((camY[1] - camY[0]) / 10, (double) pow(10, -counter));
       yRounding = false;
     }
     
-    for(float i = roundTo(camX[0], xInterval); i < camX[1]; i += xInterval) {
+    for(float i = roundUpTo(camX[0], xInterval); i < camX[1]; i += xInterval) {
       textAlign(CENTER, CENTER);
-      if(xRounding) {
+      text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+      /*if(xRounding) {
         text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
       } else {
         String iString = nf(i);
         int decLen = split(iString, '.').length > 1 ? split(iString, '.')[1].length() : 0;
-        iString = iString.substring(0, iString.length() - decLen + (decLen == 0 ? 0 : 1));
+        iString = iString.substring(0, decLen);
+        //if(i == roundTo(camX[0], xInterval)) println(xInterval + ", " + decLen + ", " + i + ", " + iString);
         text(iString, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
-      }
+      }*/
     }
     
-    for(float i = roundTo(camY[0], yInterval); i < camY[1]; i += yInterval) {
+    for(float i = roundUpTo(camY[0], yInterval); i < camY[1]; i += yInterval) {
       textAlign(RIGHT, CENTER);
       if(yRounding) {
         text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
