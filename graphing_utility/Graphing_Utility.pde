@@ -621,14 +621,37 @@ void draw() {
     
       //axis intervals
     fill(#000000);
-    xInterval = (camX[1] - camX[0]) / 10;
-    yInterval = (camY[1] - camY[0]) / 10;
+    xInterval = (camX[1] - camX[0]);
+    yInterval = (camY[1] - camY[0]);
     boolean xRounding, yRounding;
     float tempx = camX[1] - camX[0];
-    float powx = getPowerOfTen(tempx);
     
-    xInterval = (int) (floor(tempx / (pow(10, powx) * 2)) + 1) * (pow(10, powx - 1) * 2);
-    println(pow(10, powx - 1) * 2);
+    xInterval = (xInterval / 2) * (0.2 + (0.07 * str((int) xInterval).length() / 2));
+    float powOfTwo;
+    
+    if(xInterval > 8) powOfTwo = 2;
+    else powOfTwo = pow(10, (getPowerOfTen((float) xInterval) - 1)) * 2;
+    
+    while(powOfTwo < xInterval) {
+      powOfTwo *= 2;
+    }
+    xInterval = powOfTwo / 2;
+    
+    yInterval = yInterval / 2 / 2;
+    if(yInterval > 8) powOfTwo = 2;
+    else powOfTwo = pow(10, (getPowerOfTen((float) yInterval) - 1)) * 2;
+    
+    while(powOfTwo < yInterval) {
+      powOfTwo *= 2;
+    }
+    yInterval = powOfTwo / 2;
+      
+    
+    
+    //println(xInterval);
+    
+    
+    //xInterval = (int) (floor(tempx / (pow(10, powx) * 2)) + 1) * (pow(10, powx - 1) * 2);
     /*if(tempx >= 10 || tempx < 1) {
       if(tempx < pow(10, powx) * 2) {
         xInterval = (int) pow(10, powx - 1) * 2;
@@ -641,7 +664,6 @@ void draw() {
       }
     }*/
     
-    println(tempx + ", " + xInterval);
     //println(tempx + ", " + (pow(10, powx)) + ", " + (tempx - pow(10, powx)));
     
     /*if(xInterval >= 10) {
@@ -680,7 +702,11 @@ void draw() {
     
     for(float i = roundUpTo(camX[0], xInterval); i < camX[1]; i += xInterval) {
       textAlign(CENTER, CENTER);
-      text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+      if(xInterval < 1) {
+        text(str(round(i * 10.0f) / 10.0f), map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+      } else {
+        text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+      }
       /*if(xRounding) {
         text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
       } else {
@@ -694,14 +720,19 @@ void draw() {
     
     for(float i = roundUpTo(camY[0], yInterval); i < camY[1]; i += yInterval) {
       textAlign(RIGHT, CENTER);
-      if(yRounding) {
+      if(yInterval < 1) {
+        text(str(round(i * 10.0f) / 10.0f), xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
+      } else {
+        text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
+      }
+      /*if(yRounding) {
         text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
       } else {
         String iString = nf(i);
         int decLen = split(iString, '.').length > 1 ? split(iString, '.')[1].length() : 0;
         iString = iString.substring(0, iString.length() - decLen + (decLen == 0 ? 0 : 1));
         text(iString, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
-      }
+      }*/
     }
     
     
