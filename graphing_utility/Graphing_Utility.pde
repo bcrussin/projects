@@ -29,8 +29,8 @@ float selectedRange;
 float maxToggled;
 float minToggled;
 float autoZoomSpd;
-double xInterval;
-double yInterval;
+float xInterval;
+float yInterval;
 int numLabels;
 int numLines;
 int numPoints;
@@ -147,6 +147,10 @@ float getPowerOfTen(float input) {
     }
     return counter;
   }
+}
+
+float roundToPowOfTen(float input) {
+  return pow(10, getPowerOfTen(input));
 }
 
 float[] getGraphPos(float x, float y) {
@@ -624,115 +628,57 @@ void draw() {
     xInterval = (camX[1] - camX[0]);
     yInterval = (camY[1] - camY[0]);
     boolean xRounding, yRounding;
-    float tempx = camX[1] - camX[0];
     
-    xInterval = (xInterval / 2) * (0.2 + (0.07 * str((int) xInterval).length() / 2));
+    if(xInterval > 8) xInterval = (xInterval / 2) * (0.2 + (0.07 * str((int) xInterval).length() / 2));
+    else xInterval = (xInterval / 2) * ((0.75 * str(roundDownTo(xInterval, roundToPowOfTen(xInterval * 10.0f))).length() / 2) - 0.75);
     float powOfTwo;
     
-    if(xInterval > 8) powOfTwo = 2;
-    else powOfTwo = pow(10, (getPowerOfTen((float) xInterval) - 1)) * 2;
+    if(xInterval > 8) {
+      powOfTwo = 2;
     
-    while(powOfTwo < xInterval) {
-      powOfTwo *= 2;
+      while(powOfTwo < xInterval) {
+        powOfTwo *= 2;
+      }
+      
+      xInterval = powOfTwo / 2;
+      
+    }  else {
+      //powOfTwo = pow(10, (getPowerOfTen(xInterval) - 1)) * 2;
+      powOfTwo = 0.5;
+    
+      while(powOfTwo > xInterval) {
+        powOfTwo /= 2;
+      }
+      
+      xInterval = powOfTwo * 2;
+      println(xInterval);
     }
-    xInterval = powOfTwo / 2;
     
-    yInterval = yInterval / 2 / 2;
+    yInterval = yInterval / 8;
     if(yInterval > 8) powOfTwo = 2;
-    else powOfTwo = pow(10, (getPowerOfTen((float) yInterval) - 1)) * 2;
+    else powOfTwo = pow(10, (getPowerOfTen(yInterval) - 1)) * 2;
     
     while(powOfTwo < yInterval) {
       powOfTwo *= 2;
     }
     yInterval = powOfTwo / 2;
       
-    
-    
-    //println(xInterval);
-    
-    
-    //xInterval = (int) (floor(tempx / (pow(10, powx) * 2)) + 1) * (pow(10, powx - 1) * 2);
-    /*if(tempx >= 10 || tempx < 1) {
-      if(tempx < pow(10, powx) * 2) {
-        xInterval = (int) pow(10, powx - 1) * 2;
-      } else if(tempx < pow(10, powx) * 4) {
-        xInterval = (int) pow(10, powx - 1) * 4;
-      } else if(tempx < pow(10, powx) * 8) {
-        xInterval = (int) pow(10, powx - 1) * 8;
-      } else {
-        xInterval = (int) pow(10, powx);
-      }
-    }*/
-    
-    //println(tempx + ", " + (pow(10, powx)) + ", " + (tempx - pow(10, powx)));
-    
-    /*if(xInterval >= 10) {
-      xInterval = (int) roundTo((float) xInterval, (double) 5);
-      xRounding = true;
-    } else if(xInterval >= 0.75) {
-      xInterval = roundTo((camX[1] - camX[0]) / 10, (double) 2);
-      xRounding = true;
-    } else {
-      double xi = xInterval;
-      int counter = 0;
-      while(xi < 1) {
-        xi *= 10;
-        counter++;
-      }
-      xInterval = roundTo((camX[1] - camX[0]) / 10, (double) pow(10, -counter));
-      xRounding = false;
-    }*/
-    
-    if(yInterval >= 10) {
-      yInterval = (int) roundUpTo((float) yInterval, (double) 5);
-      yRounding = true;
-    } else if(yInterval >= 0.75) {
-      yInterval = roundUpTo((camY[1] - camY[0]) / 10, (double) 2);
-      yRounding = true;
-    } else {
-      double yi = yInterval;
-      int counter = 0;
-      while(yi < 1) {
-        yi *= 10;
-        counter++;
-      }
-      yInterval = roundUpTo((camY[1] - camY[0]) / 10, (double) pow(10, -counter));
-      yRounding = false;
-    }
-    
     for(float i = roundUpTo(camX[0], xInterval); i < camX[1]; i += xInterval) {
       textAlign(CENTER, CENTER);
       if(xInterval < 1) {
-        text(str(round(i * 10.0f) / 10.0f), map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+        text(str(floor(i * (100 / roundToPowOfTen(xInterval * 100.0f))) / (100 / roundToPowOfTen(xInterval * 100.0f))), map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
       } else {
         text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
       }
-      /*if(xRounding) {
-        text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
-      } else {
-        String iString = nf(i);
-        int decLen = split(iString, '.').length > 1 ? split(iString, '.')[1].length() : 0;
-        iString = iString.substring(0, decLen);
-        //if(i == roundTo(camX[0], xInterval)) println(xInterval + ", " + decLen + ", " + i + ", " + iString);
-        text(iString, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
-      }*/
     }
     
     for(float i = roundUpTo(camY[0], yInterval); i < camY[1]; i += yInterval) {
       textAlign(RIGHT, CENTER);
       if(yInterval < 1) {
-        text(str(round(i * 10.0f) / 10.0f), xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
+        text(str(floor(i * (100 / roundToPowOfTen(yInterval * 100.0f))) / (100 / roundToPowOfTen(yInterval * 100.0f))), xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
       } else {
         text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
       }
-      /*if(yRounding) {
-        text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
-      } else {
-        String iString = nf(i);
-        int decLen = split(iString, '.').length > 1 ? split(iString, '.')[1].length() : 0;
-        iString = iString.substring(0, iString.length() - decLen + (decLen == 0 ? 0 : 1));
-        text(iString, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
-      }*/
     }
     
     
