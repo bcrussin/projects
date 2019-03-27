@@ -35,12 +35,13 @@ int numLabels;
 int numLines;
 int numPoints;
 int graphID;
+int zoomFocus;
 boolean autoZooming = false;
 boolean zooming = false;
 boolean zoomedToFit = false;
 boolean graphMode = true;
 boolean dragging = false;
-boolean zoomBoth = true;
+boolean bothKeysPressed = true;
 boolean spacePressed = false;
 boolean ctrlPressed = false;
 boolean altPressed = false;
@@ -76,11 +77,18 @@ int lineHover = -1;
 color hoverCol = #4d4d4d;
 color hoverPointCol = #cccccc;
 
+String inputText;
+int inputMode = 0;
+int inputSlot = 0;
+float inputStore;
+
 String[] labels = {};
 float boxSize = 20;
 
 color[] colors = {#ff0000, #ff8000, #ffcc00, #ace600, #00e64a, #00e6b8, #00ace6, #0017e6, #d500e6};
 boolean[] lineToggle;
+
+boolean good = false;
 
 void graphLine(int i, float x1, float y1, float x2, float y2) {
   x1 = map(x1, camX[0], camX[1], xBound[0], width - xBound[1]);
@@ -200,6 +208,9 @@ void mousePressed() {
           oldCamX[i] = camX[i];
           oldCamY[i] = camY[i];
         }
+        if(shiftPressed) zoomFocus = 1;
+        else if(ctrlPressed) zoomFocus = 2;
+        else zoomFocus = 0;
         zooming = true;
       }
     } else if(mouseButton == LEFT) {
@@ -263,7 +274,7 @@ void mouseWheel(MouseEvent event) {
   autoZooming = false;
   if(mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
     if(graphMode) {
-      zoomBoth = ctrlPressed == shiftPressed;
+      bothKeysPressed = ctrlPressed == shiftPressed;
       float e = event.getCount();
       float mx = altPressed ? 0.5 : map(mouseX, xBound[0], width - xBound[1], 0, 1);
       float my = altPressed ? 0.5 : map(mouseY, height - yBound[0], yBound[1], 0, 1);
@@ -271,10 +282,10 @@ void mouseWheel(MouseEvent event) {
       float ch = camY[1] - camY[0];
       float[] zoomx = {camX[0], camX[1]};
       float[] zoomy = {camY[0], camY[1]};
-      if(zoomBoth || shiftPressed) zoomx[0] += (zoomSpd * cw) * mx * (e * -1);
-      if(zoomBoth || shiftPressed) zoomx[1] += (zoomSpd * cw) * (1-mx) * e;
-      if(zoomBoth || ctrlPressed) zoomy[0] += (zoomSpd * ch) * my * (e * -1);
-      if(zoomBoth || ctrlPressed) zoomy[1] += (zoomSpd * ch) * (1-my) * e;
+      if(bothKeysPressed || shiftPressed) zoomx[0] += (zoomSpd * cw) * mx * (e * -1);
+      if(bothKeysPressed || shiftPressed) zoomx[1] += (zoomSpd * cw) * (1-mx) * e;
+      if(bothKeysPressed || ctrlPressed) zoomy[0] += (zoomSpd * ch) * my * (e * -1);
+      if(bothKeysPressed || ctrlPressed) zoomy[1] += (zoomSpd * ch) * (1-my) * e;
       zoomToPos(zoomx, zoomy, 5);
     } else {
       float e = event.getCount();
@@ -288,22 +299,85 @@ void mouseWheel(MouseEvent event) {
 }
 
 void keyPressed() {
-  if(key == ' ') {
-    spacePressed = true;
-  }
-  switch(keyCode) {
-    case CONTROL:
-      ctrlPressed = true;
-      break;
-    case SHIFT:
-      shiftPressed = true;
-      break;
-    case ALT:
-      altPressed = true;
-      break;
-    case ENTER:
-      zoomToSelected(10);
-      break;
+  if(inputMode == 0) {
+    switch(key) {
+      case ' ':
+        spacePressed = true;
+        break;
+      case 'x':
+        inputMode = 1;
+        inputSlot = 0;
+        inputText = "";
+        inputStore = Float.NaN;
+        zooming = false;
+        autoZooming = false;
+        break;
+      case 'y':
+        inputMode = 2;
+        inputSlot = 0;
+        inputText = "";
+        inputStore = Float.NaN;
+        zooming = false;
+        autoZooming = false;
+        break;
+    }
+    switch(keyCode) {
+      case CONTROL:
+        ctrlPressed = true;
+        break;
+      case SHIFT:
+        shiftPressed = true;
+        break;
+      case ALT:
+        altPressed = true;
+        break;
+      case ENTER:
+        zoomToSelected(10);
+        break;
+      case ESC:
+        key = 0;
+        inputMode = 0;
+        break;
+    }
+  } else {
+    if(keyCode == ESC) {
+      key = 0;
+      inputMode = 0;
+      inputText = "";
+      return;
+    }
+    if(keyCode == ENTER || key == ',' || key == ' '){
+      if(inputSlot == 1) {
+        if(inputMode == 1) {
+          camX[0] = inputStore;
+          camX[1] = float(inputText);
+          if(camX[0] > camX[1]) {
+            float store = camX[0];
+            camX[0] = camX[1];
+            camX[1] = store;
+          }
+        } else {
+          camY[0] = inputStore;
+          camY[1] = float(inputText);
+          if(camX[0] > camY[1]) {
+            float store = camY[0];
+            camY[0] = camY[1];
+            camY[1] = store;
+          }
+        }
+        inputMode = 0;
+      } else {
+        inputStore = float(inputText);
+        inputSlot++;
+        inputText = "";
+      }
+      return;
+    }
+    if(str(key).matches("-?[0-9]+") || str(key).matches("-?[.-]")) {
+      if(inputText.length() + str(inputStore).length() < 99) inputText += key;
+    } else if(keyCode == BACKSPACE && inputText.length() > 0) {
+      inputText = inputText.substring(0, inputText.length() - 1);
+    }
   }
 }
 
@@ -416,7 +490,9 @@ void setup() {
 }
 
 void draw() {
-    //update mouse
+  if((shiftPressed && ctrlPressed) || (!shiftPressed && !ctrlPressed)) bothKeysPressed = true;
+  else bothKeysPressed = false;
+  
   if(autoZooming) {
     //println((zoomTargetX[1] - camX[1]) / zoomSpd);
     camX[0] += (zoomTargetX[0] - camX[0]) / autoZoomSpd;
@@ -437,29 +513,30 @@ void draw() {
         zoomedToFit = false;
         autoZooming = false;
         for(int i = 0; i < 2; i++) {
-          camX[i] = oldCamX[i] - ((mouseX - clickPos[0]) / (graphWidth / (camX[1] - camX[0])));
-          camY[i] = oldCamY[i] - ((clickPos[1] - mouseY) / (graphHeight / (camY[1] - camY[0])));
+          if(bothKeysPressed || shiftPressed) camX[i] = oldCamX[i] - ((mouseX - clickPos[0]) / (graphWidth / (camX[1] - camX[0])));
+          if(bothKeysPressed || ctrlPressed) camY[i] = oldCamY[i] - ((clickPos[1] - mouseY) / (graphHeight / (camY[1] - camY[0])));
         }
       } else {
-        dataCamX = oldDataCamX - ((mouseX - clickPos[0]));
-        dataCamY = oldDataCamY - ((clickPos[1] - mouseY)) * -1;
+        if(bothKeysPressed || shiftPressed) dataCamX = oldDataCamX - ((mouseX - clickPos[0]));
+        if(bothKeysPressed || ctrlPressed) dataCamY = oldDataCamY - ((clickPos[1] - mouseY)) * -1;
       }
     } else if(zooming && graphMode) {
       zoomedToFit = false;
       autoZooming = false;
       float[] graphPos = getGraphPos(mouseX, mouseY);
       float[] oldGraphPos = getGraphPos(clickPos[0], clickPos[1]);
-      camX[0] += map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
-      camY[0] += map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
-      camX[1] -= map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
-      camY[1] -= map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+      if(zoomFocus == 0 || zoomFocus == 1) {
+        camX[0] += map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
+        camX[1] -= map(graphPos[1], 0, graphHeight, camX[0], camX[1]) - map(oldGraphPos[1], 0, graphHeight, camX[0], camX[1]);
+      }
+      if(zoomFocus == 0 || zoomFocus == 2) {
+        camY[0] += map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+        camY[1] -= map(graphPos[1], 0, graphHeight, camY[0], camY[1]) - map(oldGraphPos[1], 0, graphHeight, camY[0], camY[1]);
+      }
       clickPos[1] = mouseY;
     }
   }
   
-  
-  //Arrays.fill(maxPoint, 2000);
-  //Arrays.fill(minPoint, -1000);
   background(bgCol);
   
   if(graphMode) {
@@ -480,14 +557,6 @@ void draw() {
       }
     }
     if(lineHover != -1 && lineToggle[lineHover]) {
-      /*hoverCol = colors[lineHover];
-      float hRed = red(hoverCol);
-      float hGreen = green(hoverCol);
-      float hBlue = blue(hoverCol);
-      hRed += (255 - hRed) * hoverMod;
-      hGreen += (255 - hGreen) * hoverMod;
-      hBlue += (255 - hBlue) * hoverMod;
-      stroke(hRed, hGreen, hBlue);*/
       stroke(hoverCol);
       strokeWeight(stroke * hoverSize);
       float pointSize = stroke * hoverSize;
@@ -533,8 +602,6 @@ void draw() {
     
       //data labels
     for(int i = 0; i < numLines; i++) {
-      //println(maxPoint[i] + ", " + maxLength[i]);
-      //float xpos = (maxLength[i] * (i * 5) + 4);
       if(xpos > dataPadX) line(xBound[0] + xpos, yBound[1], xBound[0] + xpos, height - yBound[0]);
       
       fill(colors[i]);
@@ -627,10 +694,9 @@ void draw() {
     fill(#000000);
     xInterval = (camX[1] - camX[0]);
     yInterval = (camY[1] - camY[0]);
-    boolean xRounding, yRounding;
     
     if(xInterval > 8) xInterval = (xInterval / 2) * (0.2 + (0.07 * str((int) xInterval).length() / 2));
-    else xInterval = (xInterval / 2) * ((0.75 * str(roundDownTo(xInterval, roundToPowOfTen(xInterval * 10.0f))).length() / 2) - 0.75);
+    else xInterval = (xInterval / 2) * ((0.7 * str(roundDownTo(xInterval, roundToPowOfTen(xInterval * 10.0f))).length() / 2) - 0.75);
     float powOfTwo;
     
     if(xInterval > 8) {
@@ -643,7 +709,6 @@ void draw() {
       xInterval = powOfTwo / 2;
       
     }  else {
-      //powOfTwo = pow(10, (getPowerOfTen(xInterval) - 1)) * 2;
       powOfTwo = 0.5;
     
       while(powOfTwo > xInterval) {
@@ -651,7 +716,6 @@ void draw() {
       }
       
       xInterval = powOfTwo * 2;
-      println(xInterval);
     }
     
     yInterval = yInterval / 8;
@@ -696,5 +760,15 @@ void draw() {
       fill(#000000);
       text(hoverX + ", " + hoverY, mouseX + 5, mouseY - 3);
     }
+  }
+  if(inputMode > 0) {
+    textSize(20);
+    textAlign(LEFT, CENTER);
+    fill(#FFFFFF);
+    rect(xBound[0] + 10, height - yBound[1] - 45, graphWidth - 20, 35);
+    fill(#000000);
+    if(inputStore == inputStore) text((inputMode == 1 ? "x" : "y") + " = {" + inputStore + ", " + inputText, xBound[0] + 20, height - yBound[1] - 30);
+    else if(inputText.length() > 0) text((inputMode == 1 ? "x" : "y") + " = {" + inputText, xBound[0] + 20, height - yBound[1] - 30);
+    else text((inputMode == 1 ? "x" : "y") + " = {", xBound[0] + 20, height - yBound[1] - 30);
   }
 }
