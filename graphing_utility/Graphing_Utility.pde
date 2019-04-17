@@ -69,7 +69,8 @@ float oldDataCamY;
 float dataTotalWidth = 0;
 float dataTotalHeight;
 float dataScrolling = 0;
-float[] horScrollbar = {0, 75};
+float offset;
+float[] horScrollbar = {0, 100};
 float[] verScrollbar = {0, 50};
 boolean shiftPressed = false;
 
@@ -247,9 +248,11 @@ void mousePressed() {
     }
   } else if(!graphMode && checkRect(mouseX, mouseY, horScrollbar[0], height - yBound[0] + 5, horScrollbar[1], 10)) {
       //click + drag horizontal data scroll bar
+    offset = map(clickPos[0], xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth + (horScrollbar[1] / 2)) - map(horScrollbar[0], xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth + (horScrollbar[1] / 2));
     dataScrolling = 1;
   } else if(!graphMode && checkRect(mouseX, mouseY, width - xBound[1] + 5, verScrollbar[0], 10, verScrollbar[1])) {
       //click + drag vertical data scroll bar
+    offset = map(clickPos[1], yBound[1] + dataPadY, height - yBound[0], 0, dataTotalHeight + (verScrollbar[1] / 2)) - map(verScrollbar[0], yBound[1] + dataPadY, height - yBound[0], 0, dataTotalHeight + (verScrollbar[1] / 2));
     dataScrolling = 2;
   } else if(checkRect(mouseX, mouseY, width - xBound[1] + 20, yBound[1] * 1.25, 100, 45)) {
         //show/hide all lines
@@ -287,6 +290,7 @@ void mousePressed() {
 void mouseReleased() {
   dragging = false;
   zooming = false;
+  dataScrolling = 0;
 }
 
 void mouseWheel(MouseEvent event) {
@@ -450,7 +454,6 @@ void setup() {
           maxLength[i] = data[i][j];
           if(round(maxPoint[i]) == maxPoint[i]) maxWidth[i] = getTextWidth(str(int(maxLength[i])), dataTextSize) + 25;
           else maxWidth[i] = getTextWidth(str(maxLength[i]), dataTextSize) + 25;
-          println(maxPoint[i] + ", " + maxWidth[i] + ", " + getTextWidth(labels[i], dataTextSize));
           if(maxWidth[i] < getTextWidth(labels[i], dataTextSize) + 15) maxWidth[i] = getTextWidth(labels[i], dataTextSize) + 15;
         }
         
@@ -582,11 +585,8 @@ void draw() {
       }
       clickPos[1] = mouseY;
     } else if(dataScrolling > 0 && !graphMode) {
-      if(dataScrolling == 1) {
-        float xOff = horScrollbar[0] - clickPos[0];
-        println(xOff);
-        dataCamX = map(mouseX, xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth);
-      }
+      if(dataScrolling == 1) dataCamX = map(mouseX, xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth + (horScrollbar[1] / 2)) - offset;
+      else dataCamY = map(mouseY, yBound[1] + dataPadY, height - yBound[0], 0, dataTotalHeight + (verScrollbar[1] * 2)) - offset;
     }
   }
   
