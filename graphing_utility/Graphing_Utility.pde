@@ -248,11 +248,11 @@ void mousePressed() {
     }
   } else if(!graphMode && checkRect(mouseX, mouseY, horScrollbar[0], height - yBound[0] + 5, horScrollbar[1], 10)) {
       //click + drag horizontal data scroll bar
-    offset = map(clickPos[0], xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth + (horScrollbar[1] / 2)) - map(horScrollbar[0], xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth + (horScrollbar[1] / 2));
+    offset = clickPos[0] - horScrollbar[0];
     dataScrolling = 1;
   } else if(!graphMode && checkRect(mouseX, mouseY, width - xBound[1] + 5, verScrollbar[0], 10, verScrollbar[1])) {
       //click + drag vertical data scroll bar
-    offset = map(clickPos[1], yBound[1] + dataPadY, height - yBound[0], 0, dataTotalHeight + (verScrollbar[1] / 2)) - map(verScrollbar[0], yBound[1] + dataPadY, height - yBound[0], 0, dataTotalHeight + (verScrollbar[1] / 2));
+    offset = clickPos[1] - verScrollbar[0];
     dataScrolling = 2;
   } else if(checkRect(mouseX, mouseY, width - xBound[1] + 20, yBound[1] * 1.25, 100, 45)) {
         //show/hide all lines
@@ -369,7 +369,7 @@ void keyPressed() {
       inputText = "";
       return;
     }
-    if(keyCode == ENTER || key == ',' || key == ' '){
+    if(keyCode == ENTER || key == ',' || key == ' ' && inputText.length() > 0){
       if(inputSlot == 1) {
         if(inputMode == 1) {
           camX[0] = inputStore;
@@ -378,6 +378,9 @@ void keyPressed() {
             float store = camX[0];
             camX[0] = camX[1];
             camX[1] = store;
+          } else if(camX[0] == camX[1]) {
+            camX[0]--;
+            camX[1]++;
           }
         } else {
           camY[0] = inputStore;
@@ -386,6 +389,9 @@ void keyPressed() {
             float store = camY[0];
             camY[0] = camY[1];
             camY[1] = store;
+          } else if(camY[0] == camY[1]) {
+            camY[0]--;
+            camY[1]++;
           }
         }
         inputMode = 0;
@@ -396,8 +402,8 @@ void keyPressed() {
       }
       return;
     }
-    if(str(key).matches("-?[0-9]+") || str(key).matches("-?[.-]")) {
-      if(inputText.length() + str(inputStore).length() < 99) inputText += key;
+    if(str(key).matches("-?[0-9]+") || (str(key).matches("-?[.-]") && inputText.length() == 0)) {
+      if(inputText.length() < 10) inputText += key;
     } else if(keyCode == BACKSPACE && inputText.length() > 0) {
       inputText = inputText.substring(0, inputText.length() - 1);
     }
@@ -554,6 +560,7 @@ void draw() {
             camY[i] = oldCamY[i] - ((clickPos[1] - mouseY) / (graphHeight / (camY[1] - camY[0])));
           } else {
             clickPos[1] = mouseY;
+            oldCamY[i] = camY[i];
           }
         }
       } else {
@@ -585,8 +592,13 @@ void draw() {
       }
       clickPos[1] = mouseY;
     } else if(dataScrolling > 0 && !graphMode) {
-      if(dataScrolling == 1) dataCamX = map(mouseX, xBound[0] + dataPadX, width - xBound[1], 0, dataTotalWidth + (horScrollbar[1] / 2)) - offset;
-      else dataCamY = map(mouseY, yBound[1] + dataPadY, height - yBound[0], 0, dataTotalHeight + (verScrollbar[1] * 2)) - offset;
+      if(dataScrolling == 1) {
+        horScrollbar[0] = mouseX - offset;
+        dataCamX = map(horScrollbar[0], xBound[0] + dataPadX + 5, width - xBound[1] - horScrollbar[1] - 5, 0, dataTotalWidth);
+      } else {
+        verScrollbar[0] = mouseY - offset;
+        dataCamY = map(verScrollbar[0], yBound[1] + dataPadY + 5, height - yBound[0] - verScrollbar[1] - 5, 0, dataTotalHeight);
+      }
     }
   }
   
