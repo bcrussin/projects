@@ -403,7 +403,7 @@ void keyPressed() {
       return;
     }
     if(str(key).matches("-?[0-9]+") || (str(key).matches("-?[.-]") && inputText.length() == 0)) {
-      if(inputText.length() < 10) inputText += key;
+      if(inputText.length() < 7) inputText += key;
     } else if(keyCode == BACKSPACE && inputText.length() > 0) {
       inputText = inputText.substring(0, inputText.length() - 1);
     }
@@ -530,7 +530,7 @@ void draw() {
   if((shiftPressed && ctrlPressed) || (!shiftPressed && !ctrlPressed)) bothKeysPressed = true;
   else bothKeysPressed = false;
   
-  if(autoZooming) {
+  if(autoZooming && !allTrueFalse(lineToggle, false)) {
     //println((zoomTargetX[1] - camX[1]) / zoomSpd);
     camX[0] += (zoomTargetX[0] - camX[0]) / autoZoomSpd;
     camX[1] += (zoomTargetX[1] - camX[1]) / autoZoomSpd;
@@ -542,6 +542,10 @@ void draw() {
       //println(camY[0] - zoomTargetY[0]);
       autoZooming = false;
     }
+    autoZoomSpd *= 0.99;
+    println(autoZoomSpd);
+  } else {
+    autoZooming = false;
   }
   
   if(mousePressed) {
