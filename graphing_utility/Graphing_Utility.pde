@@ -46,6 +46,7 @@ boolean bothKeysPressed = true;
 boolean spacePressed = false;
 boolean ctrlPressed = false;
 boolean altPressed = false;
+boolean originOnTop = false;
 color bgCol = #f2f2f2;
 
 float[] xBound = {100, 300};
@@ -98,8 +99,8 @@ boolean good = false;
 void graphLine(int i, float x1, float y1, float x2, float y2) {
   x1 = map(x1, camX[0], camX[1], xBound[0], width - xBound[1]);
   x2 = map(x2, camX[0], camX[1], xBound[0], width - xBound[1]);
-  y1 = map(y1, camY[0], camY[1], height - yBound[0], yBound[1]);
-  y2 = map(y2, camY[0], camY[1], height - yBound[0], yBound[1]);
+  y1 = map(y1, camY[0], camY[1], height - yBound[1], yBound[0]);
+  y2 = map(y2, camY[0], camY[1], height - yBound[1], yBound[0]);
   //println(x1 + ", " + y1 + ", " + x2 + ", " + y2);
   if(lineHover == i) stroke(hoverCol);
   else stroke(colors[i]);
@@ -109,7 +110,7 @@ void graphLine(int i, float x1, float y1, float x2, float y2) {
 
 void graphPoint(float x1, float y1, color c, float r) {
   x1 = map(x1, camX[0], camX[1], xBound[0], width - xBound[1]);
-  y1 = map(y1, camY[0], camY[1], height - yBound[0], yBound[1]);
+  y1 = map(y1, camY[0], camY[1], height - yBound[1], yBound[0]);
   
   fill(c);
   noStroke();
@@ -141,6 +142,62 @@ void zoomToPos(float[] cx, float[] cy, float spd) {
   return;
 }
 
+  //credit to jdeisenberg (https://processing.org/discourse/beta/num_1202486379.html#4)
+void dashLine(float x0, float y0, float x1, float y1, float[ ] spacing) {
+  float distance = dist(x0, y0, x1, y1); 
+  float [ ] xSpacing = new float[spacing.length]; 
+  float [ ] ySpacing = new float[spacing.length]; 
+  float drawn = 0.0;  // amount of distance drawn 
+ 
+  if (distance > 0) 
+  { 
+    int i; 
+    boolean drawLine = true;
+    for (i = 0; i < spacing.length; i++) 
+    { 
+      xSpacing[i] = lerp(0, (x1 - x0), spacing[i] / distance); 
+      ySpacing[i] = lerp(0, (y1 - y0), spacing[i] / distance); 
+    } 
+ 
+    i = 0; 
+    while (drawn < distance) 
+    { 
+      if (drawLine) 
+      { 
+        line(x0, y0, x0 + xSpacing[i], y0 + ySpacing[i]); 
+      } 
+      x0 += xSpacing[i]; 
+      y0 += ySpacing[i]; 
+      /* Add distance "drawn" by this line or gap */ 
+      drawn = drawn + mag(xSpacing[i], ySpacing[i]); 
+      i = (i + 1) % spacing.length;  // cycle through array 
+      drawLine = !drawLine;  // switch between dash and gap 
+    } 
+  } 
+}
+
+void drawOriginLines(boolean onTop) {
+  float[] spacing;
+  if(onTop) {
+    stroke(#333333);
+    strokeWeight(6);
+    spacing = new float[] {10, 14};
+  } else {
+    stroke(#cccccc);
+    strokeWeight(3);
+    spacing = new float[] {5, 7};
+  }
+  if(camX[0] < 0 && camX[1] > 0) {
+    float zeroX = map(0, camX[0], camX[1], xBound[0], width - xBound[1]);
+    dashLine(zeroX, yBound[0], zeroX, height - yBound[1], spacing);
+  }
+  if(camY[0] < 0 && camY[1] > 0) {
+    float zeroY = map(0, camY[1], camY[0], yBound[0], height - yBound[1]);
+    dashLine(xBound[0], zeroY, width - xBound[1], zeroY, spacing);
+  }
+  return;
+}
+
 float getPowerOfTen(float input) {
   int counter = 0;
   if(input <= 0) {
@@ -167,7 +224,7 @@ float roundToPowOfTen(float input) {
 }
 
 float[] getGraphPos(float x, float y) {
-  float[] result = {map(x, xBound[0], width - xBound[1], 0, graphWidth), map(y, height - yBound[0], yBound[1], 0, graphHeight)};
+  float[] result = {map(x, xBound[0], width - xBound[1], 0, graphWidth), map(y, height - yBound[1], yBound[0], 0, graphHeight)};
   return result;
 }
 
@@ -218,7 +275,7 @@ void mousePressed() {
   clickPos[0] = mouseX;
   clickPos[1] = mouseY;
         
-  if(checkRect(mouseX, mouseY, xBound[0], yBound[0], graphWidth, graphHeight)) {
+  if(checkRect(mouseX, mouseY, xBound[0], yBound[1], graphWidth, graphHeight)) {
     if(mouseButton == CENTER && graphMode) {
       if(!zooming) {
           //click (and zoom) graph
@@ -246,7 +303,7 @@ void mousePressed() {
         dragging = true;
       }
     }
-  } else if(!graphMode && checkRect(mouseX, mouseY, horScrollbar[0], height - yBound[0] + 5, horScrollbar[1], 10)) {
+  } else if(!graphMode && checkRect(mouseX, mouseY, horScrollbar[0], height - yBound[1] + 5, horScrollbar[1], 10)) {
       //click + drag horizontal data scroll bar
     offset = clickPos[0] - horScrollbar[0];
     dataScrolling = 1;
@@ -254,19 +311,19 @@ void mousePressed() {
       //click + drag vertical data scroll bar
     offset = clickPos[1] - verScrollbar[0];
     dataScrolling = 2;
-  } else if(checkRect(mouseX, mouseY, width - xBound[1] + 20, yBound[1] * 1.25, 100, 45)) {
+  } else if(checkRect(mouseX, mouseY, width - xBound[1] + 20, yBound[0] * 1.25, 100, 45)) {
         //show/hide all lines
       if(allTrueFalse(lineToggle, true)) Arrays.fill(lineToggle, false);
       else Arrays.fill(lineToggle, true);
-  } else if(checkRect(mouseX, mouseY, width - xBound[1] + 140, yBound[1] * 1.25, 140, 45)) {
+  } else if(checkRect(mouseX, mouseY, width - xBound[1] + 140, yBound[0] * 1.25, 140, 45)) {
         //toggle graph mode
       graphMode = !graphMode;
   } else {
       //show/hide a single line
     if(mouseX > width - xBound[1] + 50 && mouseX < width - xBound[1] + 50 + boxSize) {
       for(int i = 1; i < numLabels; i++) {
-        if(mouseY > (graphHeight / numLabels) * i + (yBound[1] * 2)
-          && mouseY < (graphHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
+        if(mouseY > (graphHeight / numLabels) * i + (yBound[0] * 2)
+          && mouseY < (graphHeight / numLabels) * i + (yBound[0] * 2) + boxSize) {
             
           if(mouseButton == LEFT) {
               //show/hide single line
@@ -295,12 +352,12 @@ void mouseReleased() {
 
 void mouseWheel(MouseEvent event) {
   autoZooming = false;
-  if(mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
+  if(mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[0] && mouseY < height - yBound[1]) {
     if(graphMode) {
       bothKeysPressed = ctrlPressed == shiftPressed;
       float e = event.getCount();
       float mx = altPressed ? 0.5 : map(mouseX, xBound[0], width - xBound[1], 0, 1);
-      float my = altPressed ? 0.5 : map(mouseY, height - yBound[0], yBound[1], 0, 1);
+      float my = altPressed ? 0.5 : map(mouseY, height - yBound[1], yBound[0], 0, 1);
       float cw = camX[1] - camX[0];
       float ch = camY[1] - camY[0];
       float[] zoomx = {camX[0], camX[1]};
@@ -343,6 +400,9 @@ void keyPressed() {
         zooming = false;
         autoZooming = false;
         break;
+      case 'o':
+        originOnTop = !originOnTop;
+        break;
     }
     switch(keyCode) {
       case CONTROL:
@@ -369,7 +429,7 @@ void keyPressed() {
       inputText = "";
       return;
     }
-    if(keyCode == ENTER || key == ',' || key == ' ' && inputText.length() > 0){
+    if(keyCode == ENTER || key == ',' || key == ' ' && inputText.length() > 0) {
       if(inputSlot == 1) {
         if(inputMode == 1) {
           camX[0] = inputStore;
@@ -402,7 +462,7 @@ void keyPressed() {
       }
       return;
     }
-    if(str(key).matches("-?[0-9]+") || (str(key).matches("-?[.-]") && inputText.length() == 0)) {
+    if(str(key).matches("-?[.0-9]+") || (str(key).matches("-?[-]") && inputText.length() == 0)) {
       if(inputText.length() < 7) inputText += key;
     } else if(keyCode == BACKSPACE && inputText.length() > 0) {
       inputText = inputText.substring(0, inputText.length() - 1);
@@ -411,8 +471,10 @@ void keyPressed() {
 }
 
 void keyReleased() {
-  if(key == ' ') {
-    spacePressed = false;
+  switch(key) {
+    case ' ':
+      spacePressed = false;
+      break;
   }
   switch(keyCode) {
     case CONTROL:
@@ -433,7 +495,7 @@ void settings() {
 
 void setup() {
   graphWidth = (width - xBound[1]) - xBound[0];
-  graphHeight = (height - yBound[0]) - yBound[1];
+  graphHeight = (height - yBound[1]) - yBound[0];
   File f = dataFile(dataPath + ".csv");
   boolean exist = f.isFile();
   if(exist) {
@@ -601,7 +663,7 @@ void draw() {
         dataCamX = map(horScrollbar[0], xBound[0] + dataPadX + 5, width - xBound[1] - horScrollbar[1] - 5, 0, dataTotalWidth);
       } else {
         verScrollbar[0] = mouseY - offset;
-        dataCamY = map(verScrollbar[0], yBound[1] + dataPadY + 5, height - yBound[0] - verScrollbar[1] - 5, 0, dataTotalHeight);
+        dataCamY = map(verScrollbar[0], yBound[0] + dataPadY + 5, height - yBound[1] - verScrollbar[1] - 5, 0, dataTotalHeight);
       }
     }
   }
@@ -609,17 +671,17 @@ void draw() {
   background(bgCol);
   
   if(graphMode) {
+      //draw origin lines
+    if(!originOnTop) drawOriginLines(false);
+    
       //draw graph lines
     stroke = constrain(maxStroke - ((camX[1] - camX[0]) / (numPoints * dataInterval) / strokeScale * (minStroke + (maxStroke / minStroke))), minStroke, maxStroke);
     strokeWeight(stroke);
-    //strokeWeight(map(constrain((camX[1] - camX[0]) * 0.5, 1, numPoints * dataInterval), 2, (numPoints * dataInterval), (numPoints * dataInterval), 2));
     for(int i = 0; i < numLines; i++) {
       for(int j = 1; j < numPoints; j++) {
-        if(lineToggle[i]) {
-          if(lineHover != i) {
+        if(lineToggle[i] && lineHover != i) {
             stroke(colors[i]);
             graphLine(i, (j-1) * dataInterval, data[i][j-1], j * dataInterval, data[i][j]);
-          }
         } else {
           continue;
         }
@@ -636,6 +698,9 @@ void draw() {
         graphPoint(j * dataInterval, data[lineHover][j], hoverPointCol, pointSize);
       }
     }
+    
+      //draw origin lines
+    if(originOnTop) drawOriginLines(true);
   } else {
       //show data view
     if(dataCamX > dataTotalWidth) dataCamX = dataTotalWidth;
@@ -656,8 +721,8 @@ void draw() {
     for(int i = 0; i < numLines; i++) {
       for(int j = 0; j < numPoints; j++) {
         float ypos = (dataPadY) + ((dataTextSize + 5) * j * 2) - dataCamY;
-        if(round(data[i][j]) == data[i][j]) text(int(data[i][j]), xBound[0] + xpos + 10, yBound[1] + ypos);
-        else text(str(data[i][j]), xBound[0] + xpos + 10, yBound[1] + ypos);
+        if(round(data[i][j]) == data[i][j]) text(int(data[i][j]), xBound[0] + xpos + 10, yBound[0] + ypos);
+        else text(str(data[i][j]), xBound[0] + xpos + 10, yBound[0] + ypos);
       }
       xpos += maxWidth[i];
     }
@@ -665,18 +730,18 @@ void draw() {
       
     fill(dataLabelBG);
     noStroke();
-    rect(xBound[0], yBound[1], dataPadX, graphHeight);
-    rect(xBound[0], yBound[1], graphWidth, dataPadY);
+    rect(xBound[0], yBound[0], dataPadX, graphHeight);
+    rect(xBound[0], yBound[0], graphWidth, dataPadY);
     stroke(#000000);
     
     xpos = dataPadX - dataCamX;
     
       //data labels
     for(int i = 0; i < numLines; i++) {
-      if(xpos > dataPadX) line(xBound[0] + xpos, yBound[1], xBound[0] + xpos, height - yBound[0]);
+      if(xpos > dataPadX) line(xBound[0] + xpos, yBound[0], xBound[0] + xpos, height - yBound[1]);
       
       fill(colors[i]);
-      text(labels[i], xBound[0] + xpos + 5, yBound[1] + (dataTextSize));
+      text(labels[i], xBound[0] + xpos + 5, yBound[0] + (dataTextSize));
       if(xBound[0] + xpos > width - xBound[1]) break;
       xpos += (maxWidth[i]);
     }
@@ -688,18 +753,18 @@ void draw() {
       //data interval labels
     for(int i = 0; i < numPoints; i++) {
       float ypos = (dataPadY) + ((dataTextSize + 5) * i * 2) - dataCamY;
-      if(ypos > dataPadY) line(0, yBound[1] + ypos, width - xBound[1], yBound[1] + ypos);
-      text(dataInterval * i, xBound[0] + 10, yBound[1] + ypos);
-      if(yBound[1] + ypos > height - yBound[0]) break;
+      if(ypos > dataPadY) line(0, yBound[0] + ypos, width - xBound[1], yBound[0] + ypos);
+      text(dataInterval * i, xBound[0] + 10, yBound[0] + ypos);
+      if(yBound[0] + ypos > height - yBound[1]) break;
     }
     
     fill(dataLabelBG);
     noStroke();
-    rect(xBound[0], yBound[1], dataPadX, dataPadY);
+    rect(xBound[0], yBound[0], dataPadX, dataPadY);
     stroke(#000000);
     strokeWeight(5);
-    line(xBound[0] + (dataPadX), yBound[1], xBound[0] + (dataPadX), height - yBound[0]);
-    line(0, yBound[1] + (dataPadY), width - xBound[1], yBound[1] + (dataPadY));
+    line(xBound[0] + (dataPadX), yBound[0], xBound[0] + (dataPadX), height - yBound[1]);
+    line(0, yBound[0] + (dataPadY), width - xBound[1], yBound[0] + (dataPadY));
   }  //end data view
   
   
@@ -708,17 +773,17 @@ void draw() {
   noStroke();
   rect(0, 0, xBound[0], height);
   rect(width - xBound[1], 0, width, height);
-  rect(0, 0, width, yBound[1]);
-  rect(0, height - yBound[0], width, height);
+  rect(0, 0, width, yBound[0]);
+  rect(0, height - yBound[1], width, height);
   
   if(!graphMode) {
       //data scroll bars
     fill(#a6a6a6);
     noStroke();
-    verScrollbar[0] = map(dataCamY, 0, dataTotalHeight, yBound[1] + dataPadY + 5, height - yBound[0] - verScrollbar[1] - 5);
+    verScrollbar[0] = map(dataCamY, 0, dataTotalHeight, yBound[0] + dataPadY + 5, height - yBound[1] - verScrollbar[1] - 5);
     horScrollbar[0] = map(dataCamX, 0, dataTotalWidth, xBound[0] + dataPadX + 5, width - xBound[1] - horScrollbar[1] - 5);
     if(dataTotalHeight + dataPadY > graphHeight) rect(width - xBound[1] + 5, verScrollbar[0], 10, verScrollbar[1], 5);
-    if(dataTotalWidth > 0) rect(horScrollbar[0], height - yBound[0] + 5, horScrollbar[1], 10, 5);
+    if(dataTotalWidth > 0) rect(horScrollbar[0], height - yBound[1] + 5, horScrollbar[1], 10, 5);
   }
   
   
@@ -733,34 +798,34 @@ void draw() {
     } else {
       noFill();
     }
-    rect(width - xBound[1] + 50, (graphHeight / numLabels) * i + (yBound[1] * 2), boxSize, boxSize, 5);
+    rect(width - xBound[1] + 50, (graphHeight / numLabels) * i + (yBound[0] * 2), boxSize, boxSize, 5);
     fill(colors[i-1]);
     textSize(25);
     textAlign(LEFT, CENTER);
-    text(labels[i-1], width - xBound[1] + 60 + boxSize, (graphHeight / numLabels) * i + (yBound[1] * 2) + 7);
-    if(mouseX > width - xBound[1] + 50 && mouseX < width - xBound[1] + 50 + boxSize && mouseY > (graphHeight / numLabels) * i + (yBound[1] * 2) && mouseY < (graphHeight / numLabels) * i + (yBound[1] * 2) + boxSize) {
+    text(labels[i-1], width - xBound[1] + 60 + boxSize, (graphHeight / numLabels) * i + (yBound[0] * 2) + 7);
+    if(mouseX > width - xBound[1] + 50 && mouseX < width - xBound[1] + 50 + boxSize && mouseY > (graphHeight / numLabels) * i + (yBound[0] * 2) && mouseY < (graphHeight / numLabels) * i + (yBound[0] * 2) + boxSize) {
       lineHover = i-1;
     }
   }
   
   fill(#aaaaaa);
-  rect(width - xBound[1] + 20, yBound[1] * 1.25, 100, 45, 2);
-  rect(width - xBound[1] + 140, yBound[1] * 1.25, 140, 45, 2);
+  rect(width - xBound[1] + 20, yBound[0] * 1.25, 100, 45, 2);
+  rect(width - xBound[1] + 140, yBound[0] * 1.25, 140, 45, 2);
   fill(#000000);
   textSize(20);
   textAlign(CENTER, CENTER);
-  if(allTrueFalse(lineToggle, true)) text("Hide All", width - xBound[1] + 70, yBound[1] * 1.25 + 20);
-  else text("Show All", width - xBound[1] + 70, yBound[1] * 1.25 + 20);
-  if(graphMode) text("Show Data", width - xBound[1] + 210, yBound[1] * 1.25 + 20);
-  else text("Show Graph", width - xBound[1] + 210, yBound[1] * 1.25 + 20);
+  if(allTrueFalse(lineToggle, true)) text("Hide All", width - xBound[1] + 70, yBound[0] * 1.25 + 20);
+  else text("Show All", width - xBound[1] + 70, yBound[0] * 1.25 + 20);
+  if(graphMode) text("Show Data", width - xBound[1] + 210, yBound[0] * 1.25 + 20);
+  else text("Show Graph", width - xBound[1] + 210, yBound[0] * 1.25 + 20);
   
   if(graphMode) {
        //grid lines
     stroke(#000000);
     
     strokeWeight(5);
-    line(xBound[0], yBound[1], xBound[0], height - yBound[0]);
-    line(xBound[0], height - yBound[0], width - xBound[1], height - yBound[0]);
+    line(xBound[0], yBound[0], xBound[0], height - yBound[1]);
+    line(xBound[0], height - yBound[1], width - xBound[1], height - yBound[1]);
     
     
       //axis intervals
@@ -797,26 +862,26 @@ void draw() {
     for(float i = roundUpTo(camX[0], xInterval); i < camX[1]; i += xInterval) {
       textAlign(CENTER, CENTER);
       if(xInterval < 1) {
-        text(str(floor(i * (100 / roundToPowOfTen(xInterval * 100.0f))) / (100 / roundToPowOfTen(xInterval * 100.0f))), map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+        text(str(floor(i * (100 / roundToPowOfTen(xInterval * 100.0f))) / (100 / roundToPowOfTen(xInterval * 100.0f))), map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[1] + 10);
       } else {
-        text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[0] + 10);
+        text((int) i, map(i, camX[0], camX[1], xBound[0], width - xBound[1]), height - yBound[1] + 10);
       }
     }
     
     for(float i = roundUpTo(camY[0], yInterval); i < camY[1]; i += yInterval) {
       textAlign(RIGHT, CENTER);
       if(yInterval < 1) {
-        text(str(floor(i * (100 / roundToPowOfTen(yInterval * 100.0f))) / (100 / roundToPowOfTen(yInterval * 100.0f))), xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
+        text(str(floor(i * (100 / roundToPowOfTen(yInterval * 100.0f))) / (100 / roundToPowOfTen(yInterval * 100.0f))), xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[1], yBound[0]));
       } else {
-        text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[0], yBound[1]));
+        text((int) i, xBound[0] - 5, map(i, camY[0], camY[1], height - yBound[1], yBound[0]));
       }
     }
     
     
       //show/hide coordinates
-    if(spacePressed && mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[1] && mouseY < height - yBound[0]) {
+    if(spacePressed && mouseX > xBound[0] && mouseX < width - xBound[1] && mouseY > yBound[0] && mouseY < height - yBound[1]) {
       float hoverX = (float) round(map(mouseX, xBound[0], width - xBound[1], camX[0], camX[1]) * 10) / 10;
-      float hoverY = (float) round(map(mouseY, height - yBound[0], yBound[1], camY[0], camY[1]) * 10) / 10;
+      float hoverY = (float) round(map(mouseY, height - yBound[1], yBound[0], camY[0], camY[1]) * 10) / 10;
       String text = str(hoverX) + ", " + str(hoverY);
       fill(#ffffff);
       stroke(#cccccc);
@@ -832,10 +897,10 @@ void draw() {
     textSize(20);
     textAlign(LEFT, CENTER);
     fill(#FFFFFF);
-    rect(xBound[0] + 10, height - yBound[1] - 45, graphWidth - 20, 35);
+    rect(xBound[0] + 10, height - yBound[0] - 45, graphWidth - 20, 35);
     fill(#000000);
-    if(inputStore == inputStore) text((inputMode == 1 ? "x" : "y") + " = {" + inputStore + ", " + inputText, xBound[0] + 20, height - yBound[1] - 30);
-    else if(inputText.length() > 0) text((inputMode == 1 ? "x" : "y") + " = {" + inputText, xBound[0] + 20, height - yBound[1] - 30);
-    else text((inputMode == 1 ? "x" : "y") + " = {", xBound[0] + 20, height - yBound[1] - 30);
+    if(inputStore == inputStore) text((inputMode == 1 ? "x" : "y") + " = {" + inputStore + ", " + inputText, xBound[0] + 20, height - yBound[0] - 30);
+    else if(inputText.length() > 0) text((inputMode == 1 ? "x" : "y") + " = {" + inputText, xBound[0] + 20, height - yBound[0] - 30);
+    else text((inputMode == 1 ? "x" : "y") + " = {", xBound[0] + 20, height - yBound[0] - 30);
   }
 }
