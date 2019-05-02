@@ -5,7 +5,7 @@ int w = 1280;
 int h = 720;
 
 Table csvData;
-String dataPath = "fifth_launch";
+String dataPath = "fifth_launch_smooth";
 String[] fileData;
 float[][] data;
 float[] maxPoint;
@@ -77,7 +77,7 @@ boolean shiftPressed = false;
 
 float minStroke = 3;
 float maxStroke = 12;
-float strokeScale = .025;
+float strokeScale = 1;
 float hoverSize = 1.5;
 int lineHover = -1;
 color hoverCol = #4d4d4d;
@@ -163,10 +163,8 @@ void mousePressed() {
               //zoom to fit selected points
             zoomToSelected(7);
           } else if(shiftPressed) {
-            float[] zoomX = {camX[0], camX[1]};
-            float[] range = getRangeWithinDomain(boolToInt(lineToggle), camX);
-            println(range[0] + ", " + range[1]);
-            zoomToPos(zoomX, new float[] {range[1], range[0]}, 7);
+              //zoom to fit selected points within current camera view
+            zoomWithinDomain(camX, 7);
           }
         }
       }
@@ -245,7 +243,8 @@ void keyPressed() {
         altPressed = true;
         break;
       case ENTER:
-        zoomToSelected(10);
+        if(shiftPressed) zoomWithinDomain(camX, 10);
+        else zoomToSelected(10);
         break;
       case ESC:
         key = 0;

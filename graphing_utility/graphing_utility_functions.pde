@@ -45,6 +45,13 @@ void zoomToPos(float[] cx, float[] cy, float spd) {
   return;
 }
 
+void zoomWithinDomain(float[] cx, float spd) {
+  float[] range = getRangeWithinDomain(boolToInt(lineToggle), camX);
+  float diff = range[0] - range[1];
+  zoomToPos(cx, new float[] {range[1] - (diff * 0.05), range[0] + (diff * 0.05)}, 7);
+  return;
+}
+
   //credit to jdeisenberg (https://processing.org/discourse/beta/num_1202486379.html#4)
 void dashLine(float x0, float y0, float x1, float y1, float[ ] spacing) {
   float distance = dist(x0, y0, x1, y1); 
@@ -216,16 +223,15 @@ float[] getRangeWithinDomain(int id, float[] xRange) {
 }
 
 float[] getRangeWithinDomain(int[] id, float[] xRange) {
-  float max = data[id[0]][getDataIndex(xRange[0])];
-  float min = data[id[0]][getDataIndex(xRange[0])];
-  
-  println(id);
+  float max = Float.NaN;
+  float min = Float.NaN;
+  println(min);
   
   for(int j = 0; j < numLines; j++) {
     if(id[j] == 1) {
       for(int i = getDataIndex(xRange[0]) + 1; i < getDataIndex(xRange[1]); i++) {
-        if(data[j][i] > max) max = data[j][i];
-        if(data[j][i] < min) min = data[j][i];
+        if(data[j][i] > max || max != max) max = data[j][i];
+        if(data[j][i] < min || min != min) min = data[j][i];
       }
     }
   }
