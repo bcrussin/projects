@@ -13,7 +13,7 @@ var debugRaycast = false;
 var game = {
   paused: false,
   fov: pi(0.25),
-  res: 1,
+  res: 100,
   renderDist: 500,
   rays: []
 };
@@ -26,7 +26,7 @@ var player = {
   rot: NaN,
   roundRot: NaN,
   speed: 1,
-  rotSpeed: 0.01,
+  rotSpeed: 0.03,
   w: 10,
   h: 10,
   
@@ -406,9 +406,13 @@ function raycast() {
 	  	
 			xHit = [Math.round(currPos[0] + (toNextCellX * xDir)), Math.round(currPos[1] + (slopeX * toNextCellX))];
 			yHit = [Math.round(currPos[0] + (slopeY * toNextCellY)), Math.round(currPos[1] + (toNextCellY))];
-			
-			startPos[0] = currPos[0];
-			startPos[1] = currPos[1];
+
+			if(map.get(getCellX(currPos[0]) - xDir, getCellY(currPos[1])) != 0
+  			&& map.get(getCellX(currPos[0]), getCellY(currPos[1]) + yDir) != 0
+  			&& player.cellX - (getCellX(currPos[0]) - xDir) * xDir < 0
+  			&& player.cellY - (getCellY(currPos[1]) + yDir) * yDir > 0) {
+				break;
+  			}
 			
 			if((xHit[1] - currPos[1]) * -yDir <= toNextCellY * -yDir) {
 				mapC.line(currPos[0], currPos[1], currPos[0] + (toNextCellX * xDir), currPos[1] + (slopeX * toNextCellX), "#ff80ff", 2);
@@ -436,18 +440,15 @@ function raycast() {
 				if(debugRaycast)console.log("cellPercent: [" + cellPercentX + ", " + cellPercentY + "]");
 				if(debugRaycast)console.log("toNextCell: [" + Math.round(toNextCellX) + ", " + Math.round(toNextCellY) + "]");
 				if(debugRaycast)console.log("	CHECK: (" + Math.round(currPos[0]) + ", " + Math.round(currPos[1]) + ") = [" + getCellX(currPos[0]) + ", " + getCellY(currPos[1]) + "] = " + map.get(getCellX(currPos[0]), getCellY(currPos[1])) + "\n\n");
-				if(debugRaycast)console.log((getCellX(startPos[0]) - xDir) + ", " + (getCellY(startPos[1]) + yDir));
   		
   		
-  		if(((currPos[0] > mapCanvas.width || currPos[0] < 0 || currPos[1] > mapCanvas.height || currPos[1] < 0)
-  			|| (map.get(getCellX(currPos[0]), getCellY(currPos[1])) != 0))
-  			&& (map.get(getCellX(startPos[0]) - xDir, getCellY(startPos[1])) == 0
-  			|| map.get(getCellX(startPos[0]), getCellY(startPos[1]) + yDir) == 0)) {
-  				result[i] = rayDist * Math.cos(player.rot - currAngle);
-  					mapC.rect(currPos[0] - 2.5, currPos[1] - 2.5, 5, 5, "#0000ff");
+  		if((currPos[0] > mapCanvas.width || currPos[0] < 0 || currPos[1] > mapCanvas.height || currPos[1] < 0)
+  			|| (map.get(getCellX(currPos[0]), getCellY(currPos[1])) != 0)) {
   				break;
   		}
   	}
+  	result[i] = rayDist * Math.cos(player.rot - currAngle);
+  		mapC.rect(currPos[0] - 2.5, currPos[1] - 2.5, 5, 5, "#0000ff");
   	currAngle += angleChange;
   	currPos[0] = player.x;
   	currPos[1] = player.y;
