@@ -1,8 +1,10 @@
 import java.util.*; 
 import java.io.*;
 
-int w = 1280;
+int w = 1880;
 int h = 720;
+
+ArrayList graphs;
 
 Table csvData;
 String dataPath = "fifth_launch_smooth.csv";
@@ -32,6 +34,7 @@ float minToggled;
 float autoZoomSpd;
 float xInterval;
 float yInterval;
+int numGraphs = 0;
 int numLabels;
 int numLines;
 int numPoints;
@@ -49,7 +52,7 @@ boolean altPressed = false;
 boolean originOnTop = false;
 color bgCol = #f2f2f2;
 
-float[] xBound = {100, 300};
+float[] xBound = {700, 300};
 float[] yBound = {25, 25};
 float[] startCamX = {-10, 15.4};
 float[] startCamY = {-19000, 20000};
@@ -97,8 +100,6 @@ boolean[] lineToggle;
 boolean good = false;
 
 class Graph {
-  color[] colors;
-  
   float[][] data;
   float[] xBound = {0, 0};
   float[] yBound = {0, 0};
@@ -125,6 +126,7 @@ class Graph {
   float dataTotalHeight;
   
   int[] lines;
+  int id;
   int numLines;
   int lineHover;
   
@@ -134,6 +136,7 @@ class Graph {
   boolean autoZooming = false;
   
   Graph(int[] lines, float[] xBound, float[] yBound) {
+    this.id = numGraphs++;
     this.lines = lines;
     this.numLines = lines.length;
     this.xBound = xBound;
@@ -141,13 +144,13 @@ class Graph {
     this.graphWidth = xBound[1] - xBound[0];
     this.graphHeight = yBound[1] - yBound[0];
     
-    data = new float[this.numLines][];
-    maxLength = new float[this.numLines];
-    maxWidth = new float[this.numLines];
-    lineToggle = new boolean[this.numLines];
-    Arrays.fill(lineToggle, true);
+    this.data = new float[this.numLines][numPoints];
+    this.maxLength = new float[this.numLines];
+    this.maxWidth = new float[this.numLines];
+    this.lineToggle = new boolean[this.numLines];
+    Arrays.fill(this.lineToggle, true);
     
-    for(int i = 0; i < numLines; i++) {
+    for(int i = 0; i < this.numLines; i++) {
       if(Arrays.asList(this.lines).contains(i)) {
         this.data[i] = data[i];
         this.maxLength[i] = maxLength[i];
@@ -160,6 +163,9 @@ class Graph {
     for(int i = 0; i < this.numLines; i++) {
       this.dataTotalWidth += this.maxWidth[i];
     }
+    
+    println("New Graph: (id: " + this.id + ")");
+    println(this.data.length + " lines, " + this.data[0].length + " points");
   }
   
   void update() {
@@ -192,7 +198,7 @@ class Graph {
         for(int j = 1; j < numPoints; j++) {
           if(this.lineToggle[i] && this.lineHover != i) {
               stroke(colors[this.lines[i]]);
-              graphLine(i, (j-1) * dataInterval, data[i][j-1], j * dataInterval, data[i][j]);
+              graphLine(this.id, i, (j-1) * dataInterval, this.data[i][j-1], j * dataInterval, this.data[i][j]);
           } else {
             continue;
           }
@@ -203,7 +209,7 @@ class Graph {
         strokeWeight(stroke * hoverSize);
         float pointSize = stroke * hoverSize;
         for(int j = 1; j < numPoints; j++) {
-          graphLine(lineHover, (j-1) * dataInterval, data[lineHover][j-1], j * dataInterval, data[lineHover][j]);
+          graphLine(this.id, lineHover, (j-1) * dataInterval, data[lineHover][j-1], j * dataInterval, data[lineHover][j]);
         }
         for(int j = 1; j < numPoints; j++) {
           graphPoint(j * dataInterval, data[lineHover][j], hoverPointCol, pointSize);
@@ -601,11 +607,16 @@ void setup() {
   camY[1] = startCamY[1];
   
   zoomToSelected(15);
+  
+  graphs = new ArrayList();
+  graphs.add(new Graph(new int[] {3, 4, 5}, new float[] {100, 600}, new float[] {100, 600}));
 }
 
 void draw() {
   if((shiftPressed && ctrlPressed) || (!shiftPressed && !ctrlPressed)) bothKeysPressed = true;
   else bothKeysPressed = false;
+  
+  ((Graph) graphs.get(0)).update();
   
   if(autoZooming) {
     //println((zoomTargetX[1] - camX[1]) / zoomSpd);
